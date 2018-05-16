@@ -730,7 +730,7 @@ mod platform {
     }
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "redox"))]
 mod platform {
     use mio::Ready;
 
