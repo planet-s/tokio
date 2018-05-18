@@ -178,7 +178,10 @@ impl TcpListener {
     /// # }
     /// ```
     pub fn poll_accept_std(&mut self) -> Poll<(net::TcpStream, SocketAddr), io::Error> {
+        #[cfg(not(target_os = "redox"))]
         try_ready!(self.io.poll_read_ready(mio::Ready::readable()));
+        #[cfg(target_os = "redox")]
+        try_ready!(self.io.poll_write_ready());
 
         match self.io.get_ref().accept_std() {
             Ok(pair) => Ok(pair.into()),
