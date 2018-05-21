@@ -513,12 +513,16 @@ impl<'a> AsyncRead for &'a TcpStream {
             self.io.get_ref().read_bufs(&mut bufs[..n])
         };
 
+        #[cfg(target_os = "redox")]
+        self.io.clear_read_ready(mio::Ready::readable())?;
+
         match r {
             Ok(n) => {
                 unsafe { buf.advance_mut(n); }
                 Ok(Async::Ready(n))
             }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                #[cfg(not(target_os = "redox"))]
                 self.io.clear_read_ready(mio::Ready::readable())?;
                 Ok(Async::NotReady)
             }
@@ -544,11 +548,15 @@ impl<'a> futures2::io::AsyncRead for &'a TcpStream {
 
         let r = self.io.get_ref().read_bufs(vec);
 
+        #[cfg(target_os = "redox")]
+        self.io.clear_read_ready2(cx, mio::Ready::readable())?;
+
         match r {
             Ok(n) => {
                 Ok(futures2::Async::Ready(n))
             }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                #[cfg(not(target_os = "redox"))]
                 self.io.clear_read_ready2(cx, mio::Ready::readable())?;
                 Ok(futures2::Async::Pending)
             }
@@ -581,12 +589,17 @@ impl<'a> AsyncWrite for &'a TcpStream {
             let n = buf.bytes_vec(&mut bufs);
             self.io.get_ref().write_bufs(&bufs[..n])
         };
+
+        #[cfg(target_os = "redox")]
+        self.io.clear_write_ready()?;
+
         match r {
             Ok(n) => {
                 buf.advance(n);
                 Ok(Async::Ready(n))
             }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                #[cfg(not(target_os = "redox"))]
                 self.io.clear_write_ready()?;
                 Ok(Async::NotReady)
             }
@@ -612,11 +625,15 @@ impl<'a> futures2::io::AsyncWrite for &'a TcpStream {
 
         let r = self.io.get_ref().write_bufs(vec);
 
+        #[cfg(target_os = "redox")]
+        self.io.clear_write_ready2(cx)?;
+
         match r {
             Ok(n) => {
                 Ok(futures2::Async::Ready(n))
             }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                #[cfg(not(target_os = "redox"))]
                 self.io.clear_write_ready2(cx)?;
                 Ok(futures2::Async::Pending)
             }

@@ -390,7 +390,7 @@ where E: Evented + Read,
 
         let r = self.get_mut().read(buf);
 
-        if is_wouldblock(&r) {
+        if is_wouldblock(&r) || cfg!(target_os = "redox") {
             self.clear_read_ready(mio::Ready::readable())?;
         }
 
@@ -409,9 +409,13 @@ impl<E> futures2::io::AsyncRead for PollEvented<E>
             return Ok(futures2::Async::Pending);
         }
 
+        #[cfg(target_os = "redox")]
+        self.clear_read_ready2(cx, mio::Ready::readable())?;
+
         match self.get_mut().read(buf) {
             Ok(n) => Ok(futures2::Async::Ready(n)),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                #[cfg(not(target_os = "redox"))]
                 self.clear_read_ready2(cx, mio::Ready::readable())?;
                 Ok(futures2::Async::Pending)
             }
@@ -430,7 +434,7 @@ where E: Evented + Write,
 
         let r = self.get_mut().write(buf);
 
-        if is_wouldblock(&r) {
+        if is_wouldblock(&r) || cfg!(target_os = "redox") {
             self.clear_write_ready()?;
         }
 
@@ -444,7 +448,7 @@ where E: Evented + Write,
 
         let r = self.get_mut().flush();
 
-        if is_wouldblock(&r) {
+        if is_wouldblock(&r) || cfg!(target_os = "redox") {
             self.clear_write_ready()?;
         }
 
@@ -463,9 +467,13 @@ impl<E> futures2::io::AsyncWrite for PollEvented<E>
             return Ok(futures2::Async::Pending);
         }
 
+        #[cfg(target_os = "redox")]
+        self.clear_write_ready2(cx)?;
+
         match self.get_mut().write(buf) {
             Ok(n) => Ok(futures2::Async::Ready(n)),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                #[cfg(not(target_os = "redox"))]
                 self.clear_write_ready2(cx)?;
                 Ok(futures2::Async::Pending)
             }
@@ -478,9 +486,13 @@ impl<E> futures2::io::AsyncWrite for PollEvented<E>
             return Ok(futures2::Async::Pending);
         }
 
+        #[cfg(target_os = "redox")]
+        self.clear_write_ready2(cx)?;
+
         match self.get_mut().flush() {
             Ok(_) => Ok(futures2::Async::Ready(())),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                #[cfg(not(target_os = "redox"))]
                 self.clear_write_ready2(cx)?;
                 Ok(futures2::Async::Pending)
             }
@@ -519,7 +531,7 @@ where E: Evented, &'a E: Read,
 
         let r = self.get_ref().read(buf);
 
-        if is_wouldblock(&r) {
+        if is_wouldblock(&r) || cfg!(target_os = "redox") {
             self.clear_read_ready(mio::Ready::readable())?;
         }
 
@@ -538,9 +550,13 @@ impl<'a, E> futures2::io::AsyncRead for &'a PollEvented<E>
             return Ok(futures2::Async::Pending);
         }
 
+        #[cfg(target_os = "redox")]
+        self.clear_read_ready2(cx, mio::Ready::readable())?;
+
         match self.get_ref().read(buf) {
             Ok(n) => Ok(futures2::Async::Ready(n)),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                #[cfg(not(target_os = "redox"))]
                 self.clear_read_ready2(cx, mio::Ready::readable())?;
                 Ok(futures2::Async::Pending)
             }
@@ -559,7 +575,7 @@ where E: Evented, &'a E: Write,
 
         let r = self.get_ref().write(buf);
 
-        if is_wouldblock(&r) {
+        if is_wouldblock(&r) || cfg!(target_os = "redox") {
             self.clear_write_ready()?;
         }
 
@@ -573,7 +589,7 @@ where E: Evented, &'a E: Write,
 
         let r = self.get_ref().flush();
 
-        if is_wouldblock(&r) {
+        if is_wouldblock(&r) || cfg!(target_os = "redox") {
             self.clear_write_ready()?;
         }
 
@@ -592,9 +608,13 @@ impl<'a, E> futures2::io::AsyncWrite for &'a PollEvented<E>
             return Ok(futures2::Async::Pending);
         }
 
+        #[cfg(target_os = "redox")]
+        self.clear_write_ready2(cx)?;
+
         match self.get_ref().write(buf) {
             Ok(n) => Ok(futures2::Async::Ready(n)),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                #[cfg(not(target_os = "redox"))]
                 self.clear_write_ready2(cx)?;
                 Ok(futures2::Async::Pending)
             }
