@@ -882,12 +882,16 @@ impl<'a> AsyncRead for &'a TcpStream {
             self.io.get_ref().read_bufs(&mut bufs[..n])
         };
 
+        #[cfg(target_os = "redox")]
+        self.io.clear_read_ready(mio::Ready::readable())?;
+
         match r {
             Ok(n) => {
                 unsafe { buf.advance_mut(n); }
                 Ok(Async::Ready(n))
             }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                #[cfg(not(target_os = "redox"))]
                 self.io.clear_read_ready(mio::Ready::readable())?;
                 Ok(Async::NotReady)
             }
@@ -916,12 +920,17 @@ impl<'a> AsyncWrite for &'a TcpStream {
             let n = buf.bytes_vec(&mut bufs);
             self.io.get_ref().write_bufs(&bufs[..n])
         };
+
+        #[cfg(target_os = "redox")]
+        self.io.clear_write_ready()?;
+
         match r {
             Ok(n) => {
                 buf.advance(n);
                 Ok(Async::Ready(n))
             }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                #[cfg(not(target_os = "redox"))]
                 self.io.clear_write_ready()?;
                 Ok(Async::NotReady)
             }
