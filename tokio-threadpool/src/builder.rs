@@ -94,7 +94,11 @@ impl Builder {
     /// # }
     /// ```
     pub fn new() -> Builder {
-        let num_cpus = num_cpus::get();
+        let mut num_cpus = num_cpus::get();
+        if num_cpus < 2 {
+            // tokio::spawn doesn't work great with less than 2 workers
+            num_cpus = 2;
+        }
 
         let new_park = Box::new(|_: &WorkerId| {
             Box::new(BoxedPark::new(DefaultPark::new()))
