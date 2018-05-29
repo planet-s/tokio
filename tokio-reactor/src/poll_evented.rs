@@ -259,6 +259,12 @@ where E: Evented
 
         self.inner.read_readiness.fetch_and(!ready.as_usize(), Relaxed);
 
+        #[cfg(target_os = "redox")]
+        // On redox, you can get more than one event per event.
+        // It keeps sending it over and over.
+        // We poll here to simply clear the inner readiness.
+        self.inner.registration.take_read_ready()?;
+
         if self.poll_read_ready(ready)?.is_ready() {
             // Notify the current task
             task::current().notify();
@@ -347,6 +353,12 @@ where E: Evented
         let ready = mio::Ready::writable();
 
         self.inner.write_readiness.fetch_and(!ready.as_usize(), Relaxed);
+
+        #[cfg(target_os = "redox")]
+        // On redox, you can get more than one event per event.
+        // It keeps sending it over and over.
+        // We poll here to simply clear the inner readiness.
+        self.inner.registration.take_write_ready()?;
 
         if self.poll_write_ready()?.is_ready() {
             // Notify the current task

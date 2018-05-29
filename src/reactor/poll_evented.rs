@@ -251,6 +251,12 @@ impl<E> PollEvented<E> {
     pub fn need_read(&mut self) -> io::Result<()> {
         self.inner.read_readiness.store(0, Relaxed);
 
+        #[cfg(target_os = "redox")]
+        // On redox, you can get more than one event per event.
+        // It keeps sending it over and over.
+        // We poll here to simply clear the inner readiness.
+        let _ = self.inner.registration.lock().unwrap().take_read_ready();
+
         if self.poll_read().is_ready() {
             // Notify the current task
             task::current().notify();
@@ -289,6 +295,12 @@ impl<E> PollEvented<E> {
     /// task.
     pub fn need_write(&mut self) -> io::Result<()> {
         self.inner.write_readiness.store(0, Relaxed);
+
+        #[cfg(target_os = "redox")]
+        // On redox, you can get more than one event per event.
+        // It keeps sending it over and over.
+        // We poll here to simply clear the inner readiness.
+        let _ = self.inner.registration.lock().unwrap().take_write_ready();
 
         if self.poll_write().is_ready() {
             // Notify the current task
