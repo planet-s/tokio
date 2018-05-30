@@ -116,9 +116,15 @@ impl TcpListener {
         #[cfg(target_os = "redox")]
         try_ready!(self.io.poll_write_ready());
 
-        match self.io.get_ref().accept_std() {
+        let stream = self.io.get_ref().accept_std();
+
+        #[cfg(target_os = "redox")]
+        self.io.clear_write_ready()?;
+
+        match stream {
             Ok(pair) => Ok(pair.into()),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                #[cfg(not(target_os = "redox"))]
                 self.io.clear_read_ready(mio::Ready::readable())?;
                 Ok(Async::NotReady)
             }
@@ -131,13 +137,26 @@ impl TcpListener {
     pub fn poll_accept_std2(&mut self, cx: &mut futures2::task::Context)
         -> futures2::Poll<(net::TcpStream, SocketAddr), io::Error>
     {
-        if let futures2::Async::Pending = self.io.poll_read_ready2(cx, mio::Ready::readable())? {
-            return Ok(futures2::Async::Pending);
+        #[cfg(not(target_os = "redox"))] {
+            if let futures2::Async::Pending = self.io.poll_read_ready2(cx, mio::Ready::readable())? {
+                return Ok(futures2::Async::Pending);
+            }
+        }
+        #[cfg(target_os = "redox")] {
+            if let futures2::Async::Pending = self.io.poll_write_ready2(cx)? {
+                return Ok(futures2::Async::Pending);
+            }
         }
 
-        match self.io.get_ref().accept_std() {
+        let stream = self.io.get_ref().accept_std();
+
+        #[cfg(target_os = "redox")]
+        self.io.clear_write_ready2(cx)?;
+
+        match stream {
             Ok(pair) => Ok(pair.into()),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                #[cfg(not(target_os = "redox"))]
                 self.io.clear_read_ready2(cx, mio::Ready::readable())?;
                 Ok(futures2::Async::Pending)
             }
