@@ -116,16 +116,14 @@ impl TcpListener {
         #[cfg(target_os = "redox")]
         try_ready!(self.io.poll_write_ready());
 
-        let stream = self.io.get_ref().accept_std();
-
-        #[cfg(target_os = "redox")]
-        self.io.clear_write_ready()?;
-
-        match stream {
+        match self.io.get_ref().accept_std() {
             Ok(pair) => Ok(pair.into()),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 #[cfg(not(target_os = "redox"))]
                 self.io.clear_read_ready(mio::Ready::readable())?;
+                #[cfg(target_os = "redox")]
+                self.io.clear_write_ready()?;
+
                 Ok(Async::NotReady)
             }
             Err(e) => Err(e),
@@ -148,16 +146,14 @@ impl TcpListener {
             }
         }
 
-        let stream = self.io.get_ref().accept_std();
-
-        #[cfg(target_os = "redox")]
-        self.io.clear_write_ready2(cx)?;
-
-        match stream {
+        match self.io.get_ref().accept_std() {
             Ok(pair) => Ok(pair.into()),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 #[cfg(not(target_os = "redox"))]
                 self.io.clear_read_ready2(cx, mio::Ready::readable())?;
+                #[cfg(target_os = "redox")]
+                self.io.clear_write_ready2()?;
+
                 Ok(futures2::Async::Pending)
             }
             Err(e) => Err(e),
