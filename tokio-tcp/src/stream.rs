@@ -512,6 +512,7 @@ impl<'a> AsyncRead for &'a TcpStream {
             let n = buf.bytes_vec_mut(&mut bufs);
             self.io.get_ref().read_bufs(&mut bufs[..n])
         };
+
         match r {
             Ok(n) => {
                 unsafe { buf.advance_mut(n); }
@@ -580,7 +581,6 @@ impl<'a> AsyncWrite for &'a TcpStream {
             let n = buf.bytes_vec(&mut bufs);
             self.io.get_ref().write_bufs(&bufs[..n])
         };
-
         match r {
             Ok(n) => {
                 buf.advance(n);
