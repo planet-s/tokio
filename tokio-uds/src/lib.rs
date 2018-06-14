@@ -1,4 +1,4 @@
-#![cfg(unix)]
+#![cfg(any(unix, target_os = "redox"))]
 #![doc(html_root_url = "https://docs.rs/tokio-uds/0.2.4")]
 #![deny(missing_docs, warnings, missing_debug_implementations)]
 
@@ -19,20 +19,32 @@ extern crate tokio_codec;
 extern crate tokio_io;
 extern crate tokio_reactor;
 
+#[cfg(not(target_os = "redox"))]
 mod datagram;
+#[cfg(not(target_os = "redox"))]
 mod frame;
-mod incoming;
-mod listener;
+#[cfg(not(target_os = "redox"))]
 mod recv_dgram;
+#[cfg(not(target_os = "redox"))]
 mod send_dgram;
-mod stream;
+#[cfg(not(target_os = "redox"))]
 mod ucred;
 
+mod incoming;
+mod listener;
+mod stream;
+
+#[cfg(not(target_os = "redox"))]
 pub use datagram::UnixDatagram;
+#[cfg(not(target_os = "redox"))]
 pub use frame::UnixDatagramFramed;
+#[cfg(not(target_os = "redox"))]
+pub use recv_dgram::RecvDgram;
+#[cfg(not(target_os = "redox"))]
+pub use send_dgram::SendDgram;
+#[cfg(not(target_os = "redox"))]
+pub use ucred::UCred;
+
 pub use incoming::Incoming;
 pub use listener::UnixListener;
-pub use recv_dgram::RecvDgram;
-pub use send_dgram::SendDgram;
 pub use stream::{UnixStream, ConnectFuture};
-pub use ucred::UCred;

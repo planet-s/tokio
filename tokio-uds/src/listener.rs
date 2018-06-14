@@ -104,7 +104,10 @@ impl UnixListener {
     /// implementation of a `Future::poll`, if necessary.
     pub fn poll_accept_std(&self) -> Poll<(net::UnixStream, SocketAddr), io::Error> {
         loop {
+            #[cfg(not(target_os = "redox"))]
             try_ready!(self.io.poll_read_ready(Ready::readable()));
+            #[cfg(target_os = "redox")]
+            try_ready!(self.io.poll_write_ready());
 
             match self.io.get_ref().accept_std() {
                 Ok(None) => {

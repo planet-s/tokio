@@ -1,3 +1,4 @@
+#[cfg(not(target_os = "redox"))]
 use ucred::{self, UCred};
 
 use tokio_io::{AsyncRead, AsyncWrite};
@@ -5,8 +6,7 @@ use tokio_reactor::{Handle, PollEvented};
 
 use bytes::{Buf, BufMut};
 use futures::{Async, Future, Poll};
-use iovec::{self, IoVec};
-use libc;
+use iovec::IoVec;
 use mio::Ready;
 use mio_uds;
 
@@ -111,6 +111,7 @@ impl UnixStream {
         self.io.get_ref().peer_addr()
     }
 
+    #[cfg(not(target_os = "redox"))]
     /// Returns effective credentials of the process which called `connect` or `pair`.
     pub fn peer_cred(&self) -> io::Result<UCred> {
         ucred::get_peer_cred(self)
@@ -191,21 +192,18 @@ impl<'a> AsyncRead for &'a UnixStream {
         if let Async::NotReady = <UnixStream>::poll_read_ready(self, Ready::readable())? {
             return Ok(Async::NotReady);
         }
-        unsafe {
-            let r = read_ready(buf, self.as_raw_fd());
-            if r == -1 {
-                let e = io::Error::last_os_error();
-                if e.kind() == io::ErrorKind::WouldBlock {
-                    self.io.clear_read_ready(Ready::readable())?;
-                    Ok(Async::NotReady)
-                } else {
-                    Err(e)
+        match read_ready(buf, self) {
+            Ok(r) => {
+                unsafe {
+                    buf.advance_mut(r);
                 }
-            } else {
-                let r = r as usize;
-                buf.advance_mut(r);
                 Ok(r.into())
-            }
+            },
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                self.io.clear_read_ready(Ready::readable())?;
+                Ok(Async::NotReady)
+            },
+            Err(e) => Err(e)
         }
     }
 }
@@ -219,21 +217,16 @@ impl<'a> AsyncWrite for &'a UnixStream {
         if let Async::NotReady = <UnixStream>::poll_write_ready(self)? {
             return Ok(Async::NotReady);
         }
-        unsafe {
-            let r = write_ready(buf, self.as_raw_fd());
-            if r == -1 {
-                let e = io::Error::last_os_error();
-                if e.kind() == io::ErrorKind::WouldBlock {
-                    self.io.clear_write_ready()?;
-                    Ok(Async::NotReady)
-                } else {
-                    Err(e)
-                }
-            } else {
-                let r = r as usize;
+        match write_ready(buf, self) {
+            Ok(r) => {
                 buf.advance(r);
                 Ok(r.into())
-            }
+            },
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                self.io.clear_write_ready()?;
+                Ok(Async::NotReady)
+            },
+            Err(e) => Err(e)
         }
     }
 }
@@ -285,7 +278,7 @@ impl Future for ConnectFuture {
     }
 }
 
-unsafe fn read_ready<B: BufMut>(buf: &mut B, raw_fd: RawFd) -> isize {
+fn read_ready<B: BufMut>(buf: &mut B, stream: &UnixStream) -> io::Result<usize> {
     // The `IoVec` type can't have a 0-length size, so we create a bunch
     // of dummy versions on the stack with 1 length which we'll quickly
     // overwrite.
@@ -324,17 +317,11 @@ unsafe fn read_ready<B: BufMut>(buf: &mut B, raw_fd: RawFd) -> isize {
         b16.into(),
     ];
 
-    let n = buf.bytes_vec_mut(&mut bufs);
-    read_ready_vecs(&mut bufs[..n], raw_fd)
+    let n = unsafe { buf.bytes_vec_mut(&mut bufs) };
+    stream.io.get_ref().read_bufs(&mut bufs[..n])
 }
 
-unsafe fn read_ready_vecs(bufs: &mut [&mut IoVec], raw_fd: RawFd) -> isize {
-    let iovecs = iovec::unix::as_os_slice_mut(bufs);
-
-    libc::readv(raw_fd, iovecs.as_ptr(), iovecs.len() as i32)
-}
-
-unsafe fn write_ready<B: Buf>(buf: &mut B, raw_fd: RawFd) -> isize {
+fn write_ready<B: Buf>(buf: &mut B, stream: &UnixStream) -> io::Result<usize> {
     // The `IoVec` type can't have a zero-length size, so create a dummy
     // version from a 1-length slice which we'll overwrite with the
     // `bytes_vec` method.
@@ -346,11 +333,5 @@ unsafe fn write_ready<B: Buf>(buf: &mut B, raw_fd: RawFd) -> isize {
     ];
 
     let n = buf.bytes_vec(&mut bufs);
-    write_ready_vecs(&bufs[..n], raw_fd)
-}
-
-unsafe fn write_ready_vecs(bufs: &[&IoVec], raw_fd: RawFd) -> isize {
-    let iovecs = iovec::unix::as_os_slice(bufs);
-
-    libc::writev(raw_fd, iovecs.as_ptr(), iovecs.len() as i32)
+    stream.io.get_ref().write_bufs(&bufs[..n])
 }
