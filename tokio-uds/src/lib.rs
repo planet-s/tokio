@@ -34,6 +34,7 @@ mod incoming;
 mod listener;
 mod stream;
 
+<<<<<<< HEAD
 #[cfg(not(target_os = "redox"))]
 pub use datagram::UnixDatagram;
 #[cfg(not(target_os = "redox"))]
@@ -45,6 +46,12 @@ pub use send_dgram::SendDgram;
 #[cfg(not(target_os = "redox"))]
 pub use ucred::UCred;
 
+=======
+#[cfg(not(target_os = "redox"))] pub use datagram::UnixDatagram;
+#[cfg(not(target_os = "redox"))] pub use recv_dgram::RecvDgram;
+#[cfg(not(target_os = "redox"))] pub use send_dgram::SendDgram;
+#[cfg(not(target_os = "redox"))] pub use ucred::UCred;
+>>>>>>> Fix problems with rebase
 pub use incoming::Incoming;
 pub use listener::UnixListener;
 pub use stream::{UnixStream, ConnectFuture};
