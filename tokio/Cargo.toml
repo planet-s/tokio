@@ -23,18 +23,18 @@ categories = ["asynchronous", "network-programming"]
 keywords = ["io", "async", "non-blocking", "futures"]
 
 [features]
-default = [
-  "codec",
-  "fs",
-  "io",
-  "reactor",
-  "rt-full",
-  "sync",
-  "tcp",
-  "timer",
-  "udp",
-  "uds",
-]
+# default = [
+#   "codec",
+#   "fs",
+#   "io",
+#   "reactor",
+#   "rt-full",
+#   "sync",
+#   "tcp",
+#   "timer",
+#   "udp",
+#   "uds",
+# ]
 
 codec = ["io", "tokio-codec"]
 fs = ["tokio-fs"]
@@ -78,7 +78,7 @@ tokio-trace-core = { version = "0.2", optional = true }
 # Needed until `reactor` is removed from `tokio`.
 mio = { version = "0.6.14", optional = true }
 
-[target.'cfg(unix)'.dependencies]
+[target.'cfg(all(unix, not(target_os = "redox")))'.dependencies]
 tokio-uds = { version = "0.2.1", optional = true }
 
 [dev-dependencies]

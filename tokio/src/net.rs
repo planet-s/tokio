@@ -85,7 +85,7 @@ pub type RecvDgram<T> = self::udp::RecvDgram<T>;
 #[doc(hidden)]
 pub type SendDgram<T> = self::udp::SendDgram<T>;
 
-#[cfg(all(unix, feature = "uds"))]
+#[cfg(all(unix, not(target_os = "redox"), feature = "uds"))]
 pub mod unix {
     //! Unix domain socket bindings for `tokio` (only available on unix systems).
 
@@ -94,5 +94,5 @@ pub mod unix {
         UnixListener, UnixStream,
     };
 }
-#[cfg(all(unix, feature = "uds"))]
+#[cfg(all(unix, not(target_os = "redox"), feature = "uds"))]
 pub use self::unix::{UnixDatagram, UnixDatagramFramed, UnixListener, UnixStream};
